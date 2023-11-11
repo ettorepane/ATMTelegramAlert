@@ -53,9 +53,14 @@ async function run() {
     console.log(chalk.gray('5 Minutes, full check...'));
     lastUpdate = new Date();
     const browser = await puppeteer.launch({
-        executablePath: '/usr/bin/chromium-browser',
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        });
+        executablePath: '/usr/bin/google-chrome',
+        args: [
+            '--disable-gpu',
+            '--disable-dev-shm-usage',
+            '--disable-setuid-sandbox',
+            '--no-sandbox'
+        ]
+    });
     const page = await browser.newPage();
     await page.goto('https://atm.it');
    /*
@@ -140,6 +145,22 @@ async function run() {
 }
 
 function newAlert() {
+    //only send between 6 and 24 
+    //note: this program is running on a server in a different timezone witch we don't know
+    //so we need to check the time in italy
+    //npm i timezone
+    var timezone = require('timezone/loaded');
+    var time = new Date();
+    var italyTime = timezone(time, '%H', 'it_IT');
+    if (italyTime < 6 || italyTime > 24) {
+        console.log(chalk.gray('No alert sent, time not valid'));
+        newAlertFlag = false;
+        newAlertLineFlag = false;
+        newAlertMessage = false;
+        newAlertLineMessageFlag = false;
+        return;
+    }
+
 
     // bot.sendMessage("@statoatm", 'New Alert');
     var message = '';
