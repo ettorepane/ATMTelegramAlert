@@ -3,6 +3,7 @@ import puppeteer from 'puppeteer-core';
 import { arrayBuffer } from 'stream/consumers';
 import { CronJob } from 'cron';
 import TelegramBot from 'node-telegram-bot-api';
+import timezone from 'timezone';
 
 
 const token = '6724735632:AAEkNyWsCSH4sLoKytZvMi75V8xt8I7bv2E';
@@ -149,19 +150,16 @@ function newAlert() {
     //note: this program is running on a server in a different timezone witch we don't know
     //so we need to check the time in italy
     //npm i timezone
-    var timezone = require('timezone/loaded');
     var time = new Date();
     var italyTime = timezone(time, '%H', 'it_IT');
     if (italyTime < 6 || italyTime > 24) {
-        console.log(chalk.gray('No alert sent, time not valid'));
+        console.log(chalk.gray('No alert sent, its night...'));
         newAlertFlag = false;
         newAlertLineFlag = false;
         newAlertMessage = false;
         newAlertLineMessageFlag = false;
         return;
     }
-
-
     // bot.sendMessage("@statoatm", 'New Alert');
     var message = '';
     //ENSURE WE USE THE RIGHT EMOJI
