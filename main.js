@@ -19,6 +19,8 @@ var alertMessage = '';
 
 var alertLine = '';
 
+var alertMessages = [];
+
 var lastUpdate = '';
 
 var metroLines = [
@@ -81,8 +83,35 @@ async function run() {
         newAlertFlag = true;
         newAlertMessage = true;
     }
+    /* 
+    <div id="Alert_m_testo" class="Alert_m_testo"><div class="content">
+        <p>🚦&nbsp;<strong>Bus 60 e 61</strong>. Fanno capolinea provvisorio in Largo Augusto (insieme alle linee 84 e 85). Non fermano in via Baracchini e via Larga (cedimento stradale in via Baracchini).</p>
+
+        <p>🚦&nbsp;<strong>Bus 727. </strong>Non fa servizio tra via Manzoni/Marconi e il capolinea Stazione di Cormano. (semaforo guasto a Cormano)</p>
+    </div></div>
+        */
+        var alertMessagesLocal = await page.evaluate(() => {
+            var messages = [];
+            var alertMessages = document.getElementsByClassName('Alert_m_testo')[0].getElementsByTagName('p');
+            for (var i = 0; i < alertMessages.length; i++) {
+                messages.push(alertMessages[i].innerHTML);
+            }
+            return messages;
+        });
+        //check if alertMessagesLocal is equal to alertMessages, if not, send alert
+        for (var i = 0; i < alertMessagesLocal.length; i++) {
+            if (alertMessagesLocal[i] != alertMessages[i]) {
+                console.log(chalk.red('NEW ALERT MESSAGE: ') + chalk.blue(alertMessagesLocal[i]));
+                alertMessages = alertMessagesLocal;
+                newAlertFlag = true;
+                newAlertMessage = true;
+                break;
+            }
+        }  
     } catch (error) {
-        console.log(chalk.gray('No alert'));
+        console.log(chalk.gray('No alert!' + error + ' '));
+        alertMessage = '';
+        alertMessages = [];
     }
    
 
@@ -171,6 +200,10 @@ function newAlert() {
     message += '\n\n';
     if (newAlertMessage) {
         message += "📢 Nuovo avviso: \n" + alertMessage;
+        message += '\n';
+        alertMessages.forEach(alert => {
+            message += removeTags(alert) + '\n';
+        });
         message += '\n\n';
     }
     if (newAlertLineFlag) {
@@ -210,7 +243,7 @@ function newAlert() {
         message += "🚇 Metro invariate dallo scorso update \n\n";
     }
     if (newAlertLineMessageFlag) {
-        message += "AVVISO METRO: \n" + alertLine;
+        message += "AVVISO METRO: \n" + removeTags(alertLine);
         message += '\n\n';
     }
 
@@ -229,3 +262,12 @@ var job = new CronJob('*/5 * * * *', function() {
     run();
 }, null, true, 'Europe/Rome');
 
+
+function removeTags(str) {
+    if ((str===null) || (str===''))
+        return false;
+    else
+        str = str.toString();
+    //also remove &nbsp;
+    return str.replace( /(<([^>]+)>)/ig, '').replace(/&nbsp;/ig, '');
+ }
