@@ -247,8 +247,12 @@ function newAlert() {
         message += '\n\n';
     }
     //ensure that minutes are always 2 digits
-    message += '🕐 Ultimo aggiornamento: ' + lastUpdate.getHours() + ':' +  (lastUpdate.getMinutes()<10?'0':'') + lastUpdate.getMinutes();
-
+    //message += '🕐 Ultimo aggiornamento: ' + lastUpdate.getHours() + ':' +  (lastUpdate.getMinutes()<10?'0':'') + lastUpdate.getMinutes();
+    //also in Eurome/Rome time
+    var time = new Date();
+    var italyTime = timezone(time, '%H:%M', 'it_IT');
+    message += '🕐 Ultimo aggiornamento: ' + italyTime;
+    
     bot.sendMessage("@statoatm", message);
 
     newAlertFlag = false;
