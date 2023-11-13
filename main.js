@@ -246,8 +246,8 @@ function newAlert() {
         message += "AVVISO METRO: \n" + removeTags(alertLine);
         message += '\n\n';
     }
-
-    message += '🕐 Ultimo aggiornamento: ' + lastUpdate.getHours() + ':' + lastUpdate.getMinutes();
+    //ensure that minutes are always 2 digits
+    message += '🕐 Ultimo aggiornamento: ' + lastUpdate.getHours() + ':' +  (lastUpdate.getMinutes()<10?'0':'') + lastUpdate.getMinutes();
 
     bot.sendMessage("@statoatm", message);
 
