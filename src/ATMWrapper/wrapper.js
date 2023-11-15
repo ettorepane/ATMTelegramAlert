@@ -1,6 +1,7 @@
 import puppeteer from 'puppeteer-core';
 import chalk from 'chalk';
 import newAlert from '../telegramManager/newAlert.js';
+import moment from "moment-timezone";
 import global from '../../global.js';
 
 async function run() {
@@ -108,7 +109,8 @@ async function run() {
 
     await browser.close();
     console.log(chalk.gray('---Full check completed---'));
-    if (global.newAlertFlag) {
+    var italianTime = moment().tz("Europe/Rome").format('HH:mm');
+    if (global.newAlertFlag || italianTime == global.morningMessageHour) {
         newAlert();
     }
 }

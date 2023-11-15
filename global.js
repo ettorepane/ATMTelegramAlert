@@ -1,6 +1,7 @@
 // Description: Global variables
 var global = {
     DEBUG : false,
+    morningMessageHour : "07:00",
     alertMessage: '',
     alertLine: '',
     alertMessages: [],

@@ -7,19 +7,32 @@ function newAlert() {
     //only send between 6 and 24 
     //note: this program is running on a server in a different timezone witch we don't know
     //so we need to check the time in italy
-    //npm i timezone
-    var time = new Date();
-    var hours = time.getHours();
-    if (hours < 6 || hours > 24) {
-        console.log(chalk.gray('No alert sent, time: ' + hours));
+    //use moment
+    var italianTime = moment().tz("Europe/Rome").format('HH');
+    if (italianTime < 6 || italianTime > 23) {
+        console.log(chalk.red('Not sending message, time is: ' + italianTime));
         return;
     }
-    // bot.sendMessage("@statoatm", 'New Alert');
     var message = '';
+
+    var morningMessage = false;
+    if (moment().tz("Europe/Rome").format('HH:mm') == global.morningMessageHour) {
+        morningMessage = true;
+        //use sunrise emoji
+        message += '🌅 Buongiorno! Ecco lo situazione attuale:\n\n';
+        global.newAlertFlag = true;
+        if(global.alertMessage)
+            global.newAlertLineFlag = true;
+        else
+            message += 'Non ci sono avvisi in bacheca \n\n';
+    }
+
+    
+    // bot.sendMessage("@statoatm", 'New Alert');
     //ENSURE WE USE THE RIGHT EMOJI
     if (global.alertMessage.includes('sciopero')) {
         message += '🚫 AGGIORNAMENTI SCIOPERO';
-    } else {
+    } else if (!morningMessage) {
         message += '⚠️ AGGIORNAMENTO';
     }
     message += '\n\n';
@@ -32,7 +45,10 @@ function newAlert() {
         message += '\n\n';
     }
     if (global.newAlertLineFlag) {
-        message += "🚇 Stato metro cambiato: \n";
+        if(!morningMessage)
+            message += "🚇 Stato metro cambiato: \n";
+        else
+            message += "🚇 Stato metro attuale: \n";
         global.metroLines.forEach(metro => {
             var emojiColor = '';
             switch (metro.name) {
@@ -72,10 +88,25 @@ function newAlert() {
         message += '\n\n';
     }
     var italianTime = moment().tz("Europe/Rome").format('HH:mm');
-    message += '🕐 Ultimo aggiornamento: ' +  italianTime;
+
+    if (morningMessage) {
+        message += '\n\n';
+        message += '🔔 Notifica mattutina - Buona giornata!';
+    } else
+        message += '🕐 Ultimo aggiornamento: ' +  italianTime;
+
+    var italianTime = moment().tz("Europe/Rome").format('HH');
     
+
     if(!global.DEBUG)
-        telegramBot.sendMessage(process.env.TELEGRAM_CHAT_ID, message);
+        if(italianTime <= 21 && italianTime >= 7)  
+            //dalle 7 alle 22
+            telegramBot.sendMessage(process.env.TELEGRAM_CHAT_ID, message);
+        else {
+            console.log(chalk.red('SENDING SILENT MESSAGE NIGHT MODE'));
+            message += '\n (notifica silenziosa, modalità notte)';
+            telegramBot.sendMessage(process.env.TELEGRAM_CHAT_ID, message, {disable_notification: true});
+        }
     else {
         console.log(chalk.red('DEBUG MODE!!!! THIS MESSAGE IS NOT SENDED!!!!'));
         console.log(message);
