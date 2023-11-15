@@ -30,24 +30,24 @@ async function run() {
         global.newAlertFlag = true;
         global.newAlertMessage = true;
     }
-        var alertMessagesLocal = await page.evaluate(() => {
-            var messages = [];
-            var alertMessages = document.getElementsByClassName('Alert_m_testo')[0].getElementsByTagName('p');
-            for (var i = 0; i < alertMessages.length; i++) {
-                messages.push(alertMessages[i].innerHTML);
-            }
-            return messages;
-        });
-        //check if alertMessagesLocal is equal to alertMessages, if not, send alert
-        for (var i = 0; i < alertMessagesLocal.length; i++) {
-            if (alertMessagesLocal[i] != alertMessages[i]) {
-                console.log(chalk.red('NEW ALERT MESSAGE: ') + chalk.blue(alertMessagesLocal[i]));
-                global.alertMessages = alertMessagesLocal;
-                newAlertFlag = true;
-                newAlertMessage = true;
-                break;
-            }
-        }  
+    var alertMessagesLocal = await page.evaluate(() => {
+        var messages = [];
+        var alertMessages = document.getElementsByClassName('Alert_m_testo')[0].getElementsByTagName('p');
+        for (var i = 0; i < alertMessages.length; i++) {
+            messages.push(alertMessages[i].innerHTML);
+        }
+        return messages;
+    });
+    //check if alertMessagesLocal is equal to alertMessages, if not, send alert
+    for (var i = 0; i < alertMessagesLocal.length; i++) {
+        if (alertMessagesLocal[i] != global.alertMessages[i]) {
+            console.log(chalk.red('NEW ALERT MESSAGE: ') + chalk.blue(alertMessagesLocal[i]));
+            global.alertMessages = alertMessagesLocal;
+            global.newAlertFlag = true;
+            global.newAlertMessage = true;
+            break;
+        }
+    }  
     } catch (error) {
         console.log(chalk.gray('No alert!' + error + ' '));
         global.alertMessage = '';
