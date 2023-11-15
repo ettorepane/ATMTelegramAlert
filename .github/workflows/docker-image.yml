@@ -18,6 +18,6 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          docker build -t your-image-name -f path/to/Dockerfile .
-          docker tag your-image-name ${{ secrets.DOCKERHUB_USERNAME }}/your-image-name:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/your-image-name:latest
+          docker build -t atmtelegrambot -f Dockerfile .
+          docker tag atmtelegrambot ${{ secrets.DOCKERHUB_USERNAME }}/atmtelegrambot:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/atmtelegrambot:latest
