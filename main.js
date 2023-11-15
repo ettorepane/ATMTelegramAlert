@@ -1,265 +1,31 @@
-import chalk from 'chalk';
-import puppeteer from 'puppeteer-core';
-import { arrayBuffer } from 'stream/consumers';
+
 import { CronJob } from 'cron';
-import TelegramBot from 'node-telegram-bot-api';
-import timezone from 'timezone';
+import { run } from './src/ATMWrapper/wrapper.js';
+import chalk from 'chalk';
+import newAlert from './src/telegramManager/newAlert.js';
+import global from './global.js';
 
 
-const token = '6724735632:AAEkNyWsCSH4sLoKytZvMi75V8xt8I7bv2E';
+console.log(chalk.gray('Starting...'));
 
-const bot = new TelegramBot(token, {polling: true});
-
-
-
-
-//we need to dump atm.it
-
-var alertMessage = '';
-
-var alertLine = '';
-
-var alertMessages = [];
-
-var lastUpdate = '';
-
-var metroLines = [
-    {
-        name: 'M1',
-        status: 'Regolare',
-    },
-    {
-        name: 'M2',
-        status: 'Regolare',
-    },
-    {
-        name: 'M3',
-        status: 'Regolare',
-    },
-    {
-        name: 'M4',
-        status: 'Regolare',
-    },
-    {
-        name: 'M5',
-        status: 'Regolare',
-    }
-]
-
-var newAlertFlag = false;
-var newAlertMessage = false;
-var newAlertLineFlag = false;
-var newAlertLineMessageFlag = false;
-
-
-async function run() {
-    console.log(chalk.gray('5 Minutes, full check...'));
-    lastUpdate = new Date();
-    const browser = await puppeteer.launch({
-        executablePath: '/usr/bin/google-chrome',
-        args: [
-            '--disable-gpu',
-            '--disable-dev-shm-usage',
-            '--disable-setuid-sandbox',
-            '--no-sandbox'
-        ]
-    });
-    const page = await browser.newPage();
-    await page.goto('https://atm.it');
-   /*
-        <div id="Alert_Titolo" class="Alert_Titolo">Aggiornamento sciopero: riapre M5 tra Zara e Bignami. </div>
-        we need to get the text inside the div
-    */
-   //screenshot 1920x1080
-    await page.screenshot({path: 'atm.png', fullPage: true});
-    try {
-    const text = await page.evaluate(() => {
-        const title = document.querySelector('#Alert_Titolo');
-        return title.innerHTML;
-    });
-    if (text != alertMessage) {
-        alertMessage = text;
-        console.log(chalk.red('NEW ALERT: ') + chalk.blue(text));
-        newAlertFlag = true;
-        newAlertMessage = true;
-    }
-    /* 
-    <div id="Alert_m_testo" class="Alert_m_testo"><div class="content">
-        <p>🚦&nbsp;<strong>Bus 60 e 61</strong>. Fanno capolinea provvisorio in Largo Augusto (insieme alle linee 84 e 85). Non fermano in via Baracchini e via Larga (cedimento stradale in via Baracchini).</p>
-
-        <p>🚦&nbsp;<strong>Bus 727. </strong>Non fa servizio tra via Manzoni/Marconi e il capolinea Stazione di Cormano. (semaforo guasto a Cormano)</p>
-    </div></div>
-        */
-        var alertMessagesLocal = await page.evaluate(() => {
-            var messages = [];
-            var alertMessages = document.getElementsByClassName('Alert_m_testo')[0].getElementsByTagName('p');
-            for (var i = 0; i < alertMessages.length; i++) {
-                messages.push(alertMessages[i].innerHTML);
-            }
-            return messages;
-        });
-        //check if alertMessagesLocal is equal to alertMessages, if not, send alert
-        for (var i = 0; i < alertMessagesLocal.length; i++) {
-            if (alertMessagesLocal[i] != alertMessages[i]) {
-                console.log(chalk.red('NEW ALERT MESSAGE: ') + chalk.blue(alertMessagesLocal[i]));
-                alertMessages = alertMessagesLocal;
-                newAlertFlag = true;
-                newAlertMessage = true;
-                break;
-            }
-        }  
-    } catch (error) {
-        console.log(chalk.gray('No alert!' + error + ' '));
-        alertMessage = '';
-        alertMessages = [];
-    }
-   
-
-    var metroLinesLocal = await page.evaluate(() => {
-        var lines = [];
-        for( var i = 0; i < 5; i++) {
-            var metroLine = document.getElementsByClassName('StatusLinee_Linea')[i];
-            var metroLineName = metroLine.getElementsByTagName('img')[0].alt;
-            var metroLineStatus = document.getElementsByClassName('StatusLinee_StatoScritta')[i].innerHTML;
-            //status no extra spaces at the end
-            metroLineStatus = metroLineStatus.trim();
-            lines.push({
-                name: metroLineName,
-                status: metroLineStatus
-            });
-        }
-        return lines;
-    }
-    );
-    //check if metroLinesLocal is equal to metroLines, if not, send alert
-    for (var i = 0; i < 5; i++) {
-        if (metroLinesLocal[i].status != metroLines[i].status) {
-            console.log(chalk.red('LINE CHANGED STATUS: ') + chalk.green(metroLines[i].name) + chalk.red(' OLD: ') + chalk.blue(metroLines[i].status) + chalk.red(' NEW: ') + chalk.blue(metroLinesLocal[i].status));
-            newAlertFlag = true;
-            newAlertLineFlag = true;
-        }
-    }
-    metroLines = metroLinesLocal;
-
-
-    /*
-        <span id="ctl00_SPWebPartManager1_g_9b06731f_460e_4533_a288_117c67e46987_ctl00_StatusLinee_lb_Mex" class="StatusLinee_Mex_Testo">M5 è in servizio tra Bignami e Zara (sciopero), l'intera linea riapre alle 15. A Ca' Granda scendete e cambiate binario per proseguire il viaggio. 
-            
-    */
-
-    try{
-        var alertLineLocal = await page.evaluate(() => {
-            var alertLine = document.getElementsByClassName('StatusLinee_Mex_Testo')[0].innerHTML;
-            return alertLine;
-        }
-        );
-
-        if (alertLineLocal != alertLine) {
-            alertLine = alertLineLocal;
-            console.log(chalk.red('NEW ALERT LINE: ') + chalk.blue(alertLine));
-            newAlertFlag = true;
-            newAlertLineMessageFlag = true;
-        }
-    } 
-    catch (error) {
-        console.log(chalk.gray('No alert line'));
-    }
-
-    
-
-    await browser.close();
-    console.log(chalk.gray('---Full check completed---'));
-    if (newAlertFlag) {
-        newAlert();
-    }
+//DEBUG SEQUENCE
+if (global.DEBUG) {
+    console.log(chalk.red('DEBUG MODE!!!! THIS WILL NOT SEND ANY MESSAGE!!!!'));
+    global.alertMessage = 'SCIOPERO DEBUG';
+    global.alertMessages = ['SCIOPERO MESS 1', 'SCIOPERO MESS 2'];
+    global.alertLine = 'LINEA M2 CHIUSA PER: Debug';
+    global.metroLines[0].status = 'Regolare';
+    global.metroLines[1].status = 'Tratta Sospesa';
+    global.metroLines[2].status = 'Regolare';
+    global.metroLines[3].status = 'Chiusa';
+    global.metroLines[4].status = 'Regolare';
+    global.newAlertFlag = true;
+    global.newAlertMessage = true;
+    global.newAlertLineFlag = true;
+    global.newAlertLineMessageFlag = true;
+    newAlert();
 }
 
-function newAlert() {
-    //only send between 6 and 24 
-    //note: this program is running on a server in a different timezone witch we don't know
-    //so we need to check the time in italy
-    //npm i timezone
-    var time = new Date();
-    var italyTime = timezone(time, '%H', 'it_IT');
-    if (italyTime < 6 || italyTime > 24) {
-        console.log(chalk.gray('No alert sent, its night...'));
-        newAlertFlag = false;
-        newAlertLineFlag = false;
-        newAlertMessage = false;
-        newAlertLineMessageFlag = false;
-        return;
-    }
-    // bot.sendMessage("@statoatm", 'New Alert');
-    var message = '';
-    //ENSURE WE USE THE RIGHT EMOJI
-    if (alertMessage.includes('sciopero')) {
-        message += '🚫 AGGIORNAMENTI SCIOPERO';
-    } else {
-        message += '⚠️ AGGIORNAMENTO';
-    }
-    message += '\n\n';
-    if (newAlertMessage) {
-        message += "📢 Nuovo avviso: \n" + alertMessage;
-        message += '\n';
-        alertMessages.forEach(alert => {
-            message += removeTags(alert) + '\n';
-        });
-        message += '\n\n';
-    }
-    if (newAlertLineFlag) {
-        message += "🚇 Stato metro cambiato: \n";
-        metroLines.forEach(metro => {
-            var emojiColor = '';
-            switch (metro.name) {
-                case 'M1':
-                    emojiColor = '🔴';
-                    break;
-                case 'M2':
-                    emojiColor = '🟢';
-                    break;
-                case 'M3':
-                    emojiColor = '🟡';
-                    break;
-                case 'M4':
-                    emojiColor = '🟣';
-                    break;
-                case 'M5':
-                    emojiColor = '🔵';
-                    break;
-                default:
-                    emojiColor = '⚫';
-                    break;
-            }
-            if (metro.status.includes('Regolare')) {
-                message += emojiColor + ' ' + metro.name + ' Stato: ' + metro.status + ' ✅\n';
-            }
-            else {
-                //attention icon
-                message += emojiColor + ' ' + metro.name + ' Stato: ' + metro.status + ' ❗️\n';
-            }
-        });
-        message += '\n\n';
-    } else {
-        message += "🚇 Metro invariate dallo scorso update \n\n";
-    }
-    if (newAlertLineMessageFlag) {
-        message += "AVVISO METRO: \n" + removeTags(alertLine);
-        message += '\n\n';
-    }
-    //ensure that minutes are always 2 digits
-    //message += '🕐 Ultimo aggiornamento: ' + lastUpdate.getHours() + ':' +  (lastUpdate.getMinutes()<10?'0':'') + lastUpdate.getMinutes();
-    //also in Eurome/Rome time
-    var time = new Date();
-    var italyTime = timezone(time, '%H:%M', 'it_IT');
-    message += '🕐 Ultimo aggiornamento: ' + italyTime;
-    
-    bot.sendMessage("@statoatm", message);
-
-    newAlertFlag = false;
-    newAlertLineFlag = false;
-    newAlertMessage = false;
-    newAlertLineMessageFlag = false;
-}
 //evert 5 minutes cron
 run();
 var job = new CronJob('*/5 * * * *', function() {
@@ -267,11 +33,4 @@ var job = new CronJob('*/5 * * * *', function() {
 }, null, true, 'Europe/Rome');
 
 
-function removeTags(str) {
-    if ((str===null) || (str===''))
-        return false;
-    else
-        str = str.toString();
-    //also remove &nbsp;
-    return str.replace( /(<([^>]+)>)/ig, '').replace(/&nbsp;/ig, '');
- }
+
